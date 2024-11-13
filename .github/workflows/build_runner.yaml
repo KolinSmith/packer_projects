@@ -1,0 +1,46 @@
+name: Build and Deploy Runner
+
+on:
+    push:
+        branches:
+            - main
+
+        paths:
+            - 'packer/**'
+            - 'terraform/**'
+            - '.github/workflows/build_runner.yaml'
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    pull-requests: write
+    id-token: write
+
+jobs:
+    build: 
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v2
+
+            - name: Setup Packer 
+              uses: hashicorp/setup-packer@main
+              with:
+                version: "1.8.5"
+
+            - name: Build Runner Image
+              working_directory: packer/
+              env: 
+                RUNNER_VERSION: ${{ github.run_number }}
+                PKR_VAR_app_id: ${{ secrets.AZURE_APP_ID }}
+              run: |
+                ls -lah
+
+                packer init \ 
+                    docker-ubuntu.pkr.hcl
+
+                packer validate \
+                    docker-ubuntu.pkr.hcl
+                
+                packer build \
+                    -var "runner_version=${RUNNER_VERSION}" \
+                    docker-ubuntu.pkr.hcl
